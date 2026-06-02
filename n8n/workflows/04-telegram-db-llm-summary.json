@@ -1,0 +1,170 @@
+{
+  "name": "04 - Telegram DB LLM Summary",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0004-0001-0001-000000000001",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "parameters": {
+        "event": "message",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      },
+      "webhookId": "telegram-trigger-04"
+    },
+    {
+      "id": "a1b2c3d4-0004-0002-0002-000000000002",
+      "name": "Fetch Recent Messages",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [500, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT sender_username, message_text, timestamp FROM telegram_messages ORDER BY timestamp DESC LIMIT 20;",
+        "options": {},
+        "additionalFields": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "2",
+          "name": "PostgreSQL Database"
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-0003-0003-000000000003",
+      "name": "Aggregate Messages",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [750, 300],
+      "parameters": {
+        "aggregate": "aggregateAllItemData"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Build Summary Prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1000, 300],
+      "parameters": {
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "chat-history",
+              "name": "chatHistory",
+              "value": "={{ $json.map(m => (m.sender_username || m.sender_id) + ': ' + m.message_text).join('\\n') }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-0005-0005-000000000005",
+      "name": "Call Ollama Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"={{ $env.OLLAMA_MODEL }}\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a conversation summarizer. Given a list of recent messages, provide a concise summary of the main topics discussed. Keep the summary to 3-5 sentences.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"={{ 'Recent messages:\\n' + $json.chatHistory }}\"\n    }\n  ],\n  \"stream\": false\n}",
+        "options": {
+          "timeout": 120000
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-0006-0006-000000000006",
+      "name": "Send Summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1500, 300],
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
+        "text": "={{ '--- Summary of Recent Messages ---\\n\\n' + $json.message.content }}",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Recent Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Recent Messages": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Messages": {
+      "main": [
+        [
+          {
+            "node": "Build Summary Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary Prompt": {
+      "main": [
+        [
+          {
+            "node": "Call Ollama Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Ollama Summary": {
+      "main": [
+        [
+          {
+            "node": "Send Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {}
+}

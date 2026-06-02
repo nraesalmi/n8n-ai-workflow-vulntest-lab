@@ -1,0 +1,14 @@
+# ============================================
+# n8n AI Workflow Security Research Environment
+# ============================================
+# Research and utility scripts dependencies
+# ============================================
+
+# HTTP client for API interactions
+requests>=2.31.0
+
+# YAML parsing for config management
+pyyaml>=6.0
+
+# Utility scripts
+python-dotenv>=1.0.0

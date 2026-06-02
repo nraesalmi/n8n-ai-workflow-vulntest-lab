@@ -1,0 +1,92 @@
+{
+  "name": "03 - Telegram Database Storage",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0003-0001-0001-000000000001",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "parameters": {
+        "event": "message",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      },
+      "webhookId": "telegram-trigger-03"
+    },
+    {
+      "id": "a1b2c3d4-0003-0002-0002-000000000002",
+      "name": "Store in PostgreSQL",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [500, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO telegram_messages (sender_id, sender_username, chat_id, message_text) VALUES ($1, $2, $3, $4) RETURNING id;",
+        "options": {},
+        "additionalFields": {
+          "queryParams": "={{ [\n  $json.message.from.id,\n  $json.message.from.username || null,\n  $json.message.chat.id,\n  $json.message.text\n] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "2",
+          "name": "PostgreSQL Database"
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Send Confirmation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [750, 300],
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "={{ 'Message saved to database. Row ID: ' + $json.id }}",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "1",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Store in PostgreSQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store in PostgreSQL": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {}
+}

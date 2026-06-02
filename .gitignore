@@ -1,0 +1,33 @@
+# .env
+.env.bak
+*.env.local
+.env
+
+# Data volumes (local bind mounts if any)
+*.db
+*.sqlite
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Python virtual environment
+.venv/
+
+# n8n internal data (exported if needed)
+n8n/data/
+
+# Logs
+*.log
+logs/
+
+# Research notes (keep templates, ignore filled)
+research/experiments/*.md
+!research/experiments/*-template.md
+
+# Model files (never commit)
+models/

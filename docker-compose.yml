@@ -1,0 +1,100 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: n8n-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - n8n-network
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: n8n-ollama
+    restart: unless-stopped
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      - n8n-network
+    ports:
+      - "${OLLAMA_HOST_PORT:-11434}:11434"
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION}
+    container_name: n8n-app
+    restart: unless-stopped
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_POSTGRESDB_SCHEMA=public
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=${N8N_PORT}
+      - N8N_PROTOCOL=${N8N_PROTOCOL}
+      - GENERIC_TIMEZONE=${TIMEZONE}
+      - TZ=${TIMEZONE}
+      - N8N_SECURE_COOKIE=${N8N_SECURE_COOKIE}
+      - EXECUTIONS_MODE=${N8N_EXECUTIONS_MODE}
+      - N8N_LOG_LEVEL=debug
+      - N8N_LOG_OUTPUT=console
+      - WEBHOOK_URL=${N8N_PROTOCOL}://${N8N_HOST}:${N8N_PORT}/
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/tmp/workflows:ro
+      - ./n8n/import-workflows.sh:/tmp/import-workflows.sh:ro
+    command: >
+      /bin/sh -c "
+        /tmp/import-workflows.sh &&
+        tini -- /docker/docker-entrypoint.sh
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5678/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    networks:
+      - n8n-network
+    ports:
+      - "${N8N_HOST_PORT:-5678}:5678"
+
+volumes:
+  postgres_data:
+  ollama_data:
+  n8n_data:
+
+networks:
+  n8n-network:
+    driver: bridge
