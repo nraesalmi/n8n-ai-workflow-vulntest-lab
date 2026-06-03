@@ -8,12 +8,11 @@
       "typeVersion": 1.1,
       "position": [250, 300],
       "parameters": {
-        "event": "message",
+        "updates": ["message"],
         "additionalFields": {}
       },
       "credentials": {
         "telegramApi": {
-          "id": "1",
           "name": "Telegram Bot"
         }
       },
@@ -35,7 +34,6 @@
       },
       "credentials": {
         "postgres": {
-          "id": "2",
           "name": "PostgreSQL Database"
         }
       }
@@ -48,13 +46,12 @@
       "position": [750, 300],
       "parameters": {
         "operation": "sendMessage",
-        "chatId": "={{ $json.message.chat.id }}",
+        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
         "text": "={{ 'Message saved to database. Row ID: ' + $json.id }}",
         "additionalFields": {}
       },
       "credentials": {
         "telegramApi": {
-          "id": "1",
           "name": "Telegram Bot"
         }
       }

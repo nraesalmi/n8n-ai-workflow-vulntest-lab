@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# ============================================
+# n8n Research Lab Setup
+# ============================================
+# Run this AFTER starting the Docker environment:
+#   docker compose up -d
+#   ./scripts/setup.sh
+# ============================================
+
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Load .env
+set -a
+source "$PROJECT_DIR/.env"
+set +a
+
+echo "========================================"
+echo " n8n Lab Setup: Credentials & Workflows"
+echo "========================================"
+
+# â”€â”€ Generate credential JSON files â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+echo ""
+echo "1. Generating credential files..."
+CRED_DIR=$(mktemp -d)
+
+# Telegram Bot
+cat > "$CRED_DIR/telegram-bot.json" <<EOF
+{
+  "name": "Telegram Bot",
+  "type": "telegramApi",
+  "data": {
+    "accessToken": "${TELEGRAM_BOT_TOKEN}"
+  }
+}
+EOF
+
+# PostgreSQL Database
+cat > "$CRED_DIR/postgres-database.json" <<EOF
+{
+  "name": "PostgreSQL Database",
+  "type": "postgres",
+  "data": {
+    "host": "postgres",
+    "database": "${POSTGRES_DB}",
+    "user": "${POSTGRES_USER}",
+    "password": "${POSTGRES_PASSWORD}",
+    "port": 5432,
+    "maxConnections": 10,
+    "allowUnauthorizedCerts": true,
+    "ssl": "disable"
+  }
+}
+EOF
+
+echo "   Credential files created."
+
+# â”€â”€ Wait for n8n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+echo ""
+echo "2. Waiting for n8n..."
+for i in $(seq 1 30); do
+  if curl -sf http://localhost:5678/healthz > /dev/null 2>&1; then
+    echo "   n8n is ready."
+    break
+  fi
+  if [ "$i" -eq 30 ]; then
+    echo "   ERROR: n8n did not become ready. Check: docker compose logs n8n"
+    exit 1
+  fi
+  sleep 2
+done
+
+# â”€â”€ Delete stale workflows (from previous imports) â”€â”€
+echo ""
+echo "3. Cleaning stale workflows..."
+docker exec n8n-postgres psql -U n8n -d n8n -c \
+  "DELETE FROM public.workflow_entity WHERE name LIKE '01 - Telegram%' OR name LIKE '02 - Telegram%' OR name LIKE '03 - Telegram%' OR name LIKE '04 - Telegram%';" > /dev/null 2>&1 || true
+echo "   Stale workflows removed."
+
+# â”€â”€ Copy credentials to container â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+echo ""
+echo "4. Copying credentials to container..."
+docker cp "$CRED_DIR/." n8n-app:/tmp/credentials/
+rm -rf "$CRED_DIR"
+
+# â”€â”€ Import credentials â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+echo ""
+echo "5. Importing credentials..."
+docker exec n8n-app n8n import:credentials --separate --input=/tmp/credentials
+echo "   Credentials imported."
+
+# â”€â”€ Import workflows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+echo ""
+echo "6. Importing workflows..."
+docker exec n8n-app n8n import:workflow --separate --input=/tmp/workflows
+echo "   Workflows imported."
+
+echo ""
+echo "========================================"
+echo " Setup complete!"
+echo "========================================"
+echo ""
+echo "Next steps:"
+echo "  1. Open http://localhost:5678"
+echo "  2. Open each workflow and click Active"
+echo "  3. If credentials need re-linking, edit each workflow"
+echo "     and re-select them from the credential dropdown"
+echo ""

@@ -8,12 +8,11 @@
       "typeVersion": 1.1,
       "position": [250, 300],
       "parameters": {
-        "event": "message",
+        "updates": ["message"],
         "additionalFields": {}
       },
       "credentials": {
         "telegramApi": {
-          "id": "1",
           "name": "Telegram Bot"
         }
       },
@@ -33,7 +32,6 @@
       },
       "credentials": {
         "postgres": {
-          "id": "2",
           "name": "PostgreSQL Database"
         }
       }
@@ -99,7 +97,6 @@
       },
       "credentials": {
         "telegramApi": {
-          "id": "1",
           "name": "Telegram Bot"
         }
       }

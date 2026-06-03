@@ -29,12 +29,6 @@ services:
       - OLLAMA_HOST=0.0.0.0:11434
     volumes:
       - ollama_data:/root/.ollama
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
     networks:
       - n8n-network
     ports:
@@ -62,18 +56,13 @@ services:
       - EXECUTIONS_MODE=${N8N_EXECUTIONS_MODE}
       - N8N_LOG_LEVEL=debug
       - N8N_LOG_OUTPUT=console
-      - WEBHOOK_URL=${N8N_PROTOCOL}://${N8N_HOST}:${N8N_PORT}/
+      - WEBHOOK_URL=${WEBHOOK_URL}
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n/workflows:/tmp/workflows:ro
-      - ./n8n/import-workflows.sh:/tmp/import-workflows.sh:ro
-    command: >
-      /bin/sh -c "
-        /tmp/import-workflows.sh &&
-        tini -- /docker/docker-entrypoint.sh
-      "
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5678/healthz || exit 1"]
       interval: 15s
@@ -82,8 +71,6 @@ services:
       start_period: 30s
     depends_on:
       postgres:
-        condition: service_healthy
-      ollama:
         condition: service_healthy
     networks:
       - n8n-network
