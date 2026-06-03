@@ -5,7 +5,7 @@
       "id": "a1b2c3d4-0004-0001-0001-000000000001",
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
-      "typeVersion": 1.1,
+      "typeVersion": 1,
       "position": [250, 300],
       "parameters": {
         "updates": ["message"],

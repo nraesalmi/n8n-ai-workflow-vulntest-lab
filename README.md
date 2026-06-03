@@ -151,7 +151,8 @@ This chain crosses **two workflows** and **two execution contexts** — the inje
 
 ```bash
 cp .env.example .env
-# Edit .env: set N8N_ENCRYPTION_KEY, POSTGRES_PASSWORD, TELEGRAM_BOT_TOKEN, OLLAMA_MODEL
+# Edit .env: set N8N_ENCRYPTION_KEY, POSTGRES_PASSWORD, TELEGRAM_BOT_TOKEN, OLLAMA_MODEL,
+#            N8N_HOST, N8N_PROTOCOL, and WEBHOOK_URL if using a public domain
 
 # Start services
 docker compose up -d
@@ -160,14 +161,56 @@ docker compose up -d
 ./scripts/pull-model.sh
 ```
 
-Configure Telegram credentials in n8n UI at `http://localhost:5678`:
-1. **Credentials → Add Credential → Telegram API**
-2. Name: `Telegram Bot`, Token: your bot token
-3. For Workflows 03/04: also add **PostgreSQL** credentials
+### First-Time Initialization
+
+After `docker compose up -d`, n8n starts uninitialized:
+
+1. Open `http://localhost:5678` (or your server address) in your browser
+2. Complete the **setup wizard** to create your owner account
+3. Then import credentials and workflows:
+
+```powershell
+# PowerShell (Windows)
+powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+```
+
+```bash
+# Bash (Linux/macOS)
+./scripts/setup.sh
+```
+
+The setup script will:
+- Wait for n8n to be healthy
+- Verify the owner user exists
+- Generate credential files with UUIDs and import them
+- Import all 4 workflows
+
+### Telegram Webhook (for production use)
+
+The Telegram Trigger node requires a public HTTPS URL for webhook registration. For local research, you have options:
+
+**Option A: Cloudflare Tunnel (recommended)**
+- Expose n8n via Cloudflare Tunnel: `n8n.yourdomain.com` → `http://<lan-ip>:5678`
+- Set in `.env`:
+  ```
+  N8N_HOST=n8n.yourdomain.com
+  N8N_PROTOCOL=https
+  WEBHOOK_URL=https://n8n.yourdomain.com/
+  ```
+
+**Option B: ngrok**
+- `ngrok http 5678`
+- Set `WEBHOOK_URL=https://<ngrok-id>.ngrok.io/` in `.env`
+
+After setting the webhook URL, restart n8n and re-run the setup script:
+```bash
+docker compose down n8n && docker compose up -d n8n
+.\scripts\setup.ps1   # (PowerShell)
+```
 
 ### Workflow Activation
 
-All 4 workflows are auto-imported on first boot but start in **inactive** state. Open each workflow in the n8n editor and click **Active** to enable.
+All 4 workflows are imported in **inactive** state. Open each workflow in the n8n editor and click **Active** to enable webhook registration with Telegram.
 
 ---
 
@@ -213,18 +256,19 @@ docker exec -it n8n-postgres psql -U n8n -d n8n -c \
 │   └── init/
 │       └── 01-init.sql             # telegram_messages schema
 ├── n8n/
-│   ├── workflows/                  # Attack surface workflows
-│   │   ├── 01-telegram-llm-chatbot.json
-│   │   ├── 02-telegram-llm-classification.json
-│   │   ├── 03-telegram-db-storage.json
-│   │   └── 04-telegram-db-llm-summary.json
-│   └── import-workflows.sh         # Auto-import on first boot
+│   └── workflows/                  # Attack surface workflows
+│       ├── 01-telegram-llm-chatbot.json
+│       ├── 02-telegram-llm-classification.json
+│       ├── 03-telegram-db-storage.json
+│       └── 04-telegram-db-llm-summary.json
 ├── research/
 │   ├── architecture/architecture-diagram.md
 │   ├── experiments/experiment-notes-template.md
 │   └── inventory/workflow-inventory-template.md
-└── scripts/
-    └── pull-model.sh               # Ollama model download
+├── scripts/
+│   ├── pull-model.sh               # Ollama model download
+│   ├── setup.ps1                   # Workflow/credential import (Windows)
+│   └── setup.sh                    # Workflow/credential import (Linux/macOS)
 ```
 
 ---

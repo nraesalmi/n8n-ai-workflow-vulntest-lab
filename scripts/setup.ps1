@@ -39,15 +39,16 @@ if (-not $ready) {
 }
 Write-Host "   n8n is ready."
 
-# ── Step 2: Check user exists ───────────────
+# ── Step 2: Check owner user ─────────────────
 Write-Host ""
 Write-Host "2. Checking owner user..."
-$userId = (docker exec n8n-postgres psql -U n8n -d n8n -t -A -c "SELECT id FROM public.user LIMIT 1;" 2>&1).Trim()
-if (-not $userId) {
+$userId = docker exec n8n-postgres psql -U n8n -d n8n -t -A -c "SELECT id FROM public.user LIMIT 1;" 2>&1
+if (-not $userId -or $userId.Trim() -eq "") {
     Write-Host "   No user found. Open http://localhost:5678 in your browser,"
     Write-Host "   complete the setup wizard to create your account, then re-run this script."
     exit 1
 }
+$userId = $userId.Trim()
 Write-Host "   Owner user: $userId"
 
 # ── Step 3: Generate & import credentials ──

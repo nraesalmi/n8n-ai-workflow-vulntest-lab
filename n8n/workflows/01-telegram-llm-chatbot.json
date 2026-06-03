@@ -5,11 +5,10 @@
       "id": "a1b2c3d4-0001-0001-0001-000000000001",
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
-      "typeVersion": 1.1,
+      "typeVersion": 1,
       "position": [250, 300],
       "parameters": {
-        "updates": ["message"],
-        "additionalFields": {}
+        "updates": ["message"]
       },
       "credentials": {
         "telegramApi": {
@@ -29,7 +28,7 @@
         "url": "http://ollama:11434/api/chat",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"={{ $env.OLLAMA_MODEL }}\",\n  \"messages\": [{\"role\": \"user\", \"content\": \"={{ $json.message.text }}\"}],\n  \"stream\": false\n}",
+        "jsonBody": "={{ { model: 'ministral-3:3b-instruct-2512-q4_K_M', messages: [ { role: 'user', content: $json.message.text } ], stream: false } }}",
         "options": {
           "timeout": 120000
         }
@@ -43,9 +42,8 @@
       "position": [750, 300],
       "parameters": {
         "operation": "sendMessage",
-        "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
-        "text": "={{ $json.message.content }}",
-        "additionalFields": {}
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.message.content }}"
       },
       "credentials": {
         "telegramApi": {
@@ -81,6 +79,5 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "active": false,
-  "pinData": {}
+  "active": false
 }
