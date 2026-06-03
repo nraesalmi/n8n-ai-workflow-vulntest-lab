@@ -29,7 +29,7 @@
         "url": "http://ollama:11434/api/chat",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"={{ $env.OLLAMA_MODEL }}\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a message classifier. Given a user message, classify it into exactly one category: support, sales, technical, or general. Respond with ONLY the category name in lowercase, nothing else.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"={{ $json.message.text }}\"\n    }\n  ],\n  \"stream\": false\n}",
+        "jsonBody": "={{ {\n  model: 'ministral-3:3b-instruct-2512-q4_K_M',\n  messages: [\n    {\n      role: 'system',\n      content: 'You are a message classifier. Classify the user message into exactly one category: support, sales, technical, or general. Respond ONLY with the category name in lowercase.'\n    },\n    {\n      role: 'user',\n      content: $json.message.text\n    }\n  ],\n  stream: false\n} }}",
         "options": {
           "timeout": 120000
         }
@@ -42,17 +42,14 @@
       "typeVersion": 3.4,
       "position": [750, 300],
       "parameters": {
-        "options": {},
         "assignments": {
           "assignments": [
             {
-              "id": "category",
               "name": "category",
               "value": "={{ $json.message.content.trim().toLowerCase() }}",
               "type": "string"
             },
             {
-              "id": "reply",
               "name": "reply",
               "value": "={{ 'Your message has been classified as: ' + $json.message.content.trim() }}",
               "type": "string"
@@ -70,8 +67,7 @@
       "parameters": {
         "operation": "sendMessage",
         "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
-        "text": "={{ $json.reply }}",
-        "additionalFields": {}
+        "text": "={{ $json.reply }}"
       },
       "credentials": {
         "telegramApi": {

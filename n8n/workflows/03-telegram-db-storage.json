@@ -2,61 +2,75 @@
   "name": "03 - Telegram Database Storage",
   "nodes": [
     {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
       "id": "a1b2c3d4-0003-0001-0001-000000000001",
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1,
-      "position": [250, 300],
-      "parameters": {
-        "updates": ["message"],
-        "additionalFields": {}
-      },
+      "position": [
+        256,
+        304
+      ],
+      "webhookId": "telegram-trigger-03",
       "credentials": {
         "telegramApi": {
+          "id": "459fa430-5532-4057-bf41-205bdf1fa4a4",
           "name": "Telegram Bot"
         }
-      },
-      "webhookId": "telegram-trigger-03"
+      }
     },
     {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO telegram_messages (sender_id, sender_username, chat_id, message_text) VALUES ($1, $2, $3, $4) RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ $json.message.from.id }}{{ $json.message.from.username }}{{ $json.message.chat.id }}{{ $json.message.text }}"
+        }
+      },
       "id": "a1b2c3d4-0003-0002-0002-000000000002",
       "name": "Store in PostgreSQL",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [500, 300],
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT INTO telegram_messages (sender_id, sender_username, chat_id, message_text) VALUES ($1, $2, $3, $4) RETURNING id;",
-        "options": {},
-        "additionalFields": {
-          "queryParams": "={{ [\n  $json.message.from.id,\n  $json.message.from.username || null,\n  $json.message.chat.id,\n  $json.message.text\n] }}"
-        }
-      },
+      "position": [
+        512,
+        304
+      ],
       "credentials": {
         "postgres": {
+          "id": "b58d5fd8-7495-4e92-a71f-119aed0b16d9",
           "name": "PostgreSQL Database"
         }
       }
     },
     {
-      "id": "a1b2c3d4-0003-0003-0003-000000000003",
-      "name": "Send Confirmation",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [750, 300],
       "parameters": {
-        "operation": "sendMessage",
         "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
         "text": "={{ 'Message saved to database. Row ID: ' + $json.id }}",
         "additionalFields": {}
       },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Send Confirmation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        752,
+        304
+      ],
+      "webhookId": "99942fa6-6843-4c05-9bf6-69950693045f",
       "credentials": {
         "telegramApi": {
+          "id": "459fa430-5532-4057-bf41-205bdf1fa4a4",
           "name": "Telegram Bot"
         }
       }
     }
   ],
+  "pinData": {},
   "connections": {
     "Telegram Trigger": {
       "main": [
@@ -81,9 +95,16 @@
       ]
     }
   },
+  "active": true,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
-  "active": false,
-  "pinData": {}
+  "versionId": "dc2fe968-46e3-46a7-b9f5-6b006b1b741d",
+  "meta": {
+    "instanceId": "1afd1603541321403b78fb995f88b5d6c10b9fe9bca3c0adda21b7480a6f9898"
+  },
+  "nodeGroups": [],
+  "id": "aXjPaMNiVpOwQ8wZ",
+  "tags": []
 }

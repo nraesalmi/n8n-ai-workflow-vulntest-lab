@@ -26,9 +26,7 @@
       "position": [500, 300],
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT sender_username, message_text, timestamp FROM telegram_messages ORDER BY timestamp DESC LIMIT 20;",
-        "options": {},
-        "additionalFields": {}
+        "query": "SELECT sender_username, message_text FROM telegram_messages ORDER BY id DESC LIMIT 20;"
       },
       "credentials": {
         "postgres": {
@@ -53,13 +51,11 @@
       "typeVersion": 3.4,
       "position": [1000, 300],
       "parameters": {
-        "options": {},
         "assignments": {
           "assignments": [
             {
-              "id": "chat-history",
               "name": "chatHistory",
-              "value": "={{ $json.map(m => (m.sender_username || m.sender_id) + ': ' + m.message_text).join('\\n') }}",
+              "value": "={{ $json.map(m => (m.sender_username || 'unknown') + ': ' + m.message_text).join('\\n') }}",
               "type": "string"
             }
           ]
@@ -77,7 +73,7 @@
         "url": "http://ollama:11434/api/chat",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"={{ $env.OLLAMA_MODEL }}\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a conversation summarizer. Given a list of recent messages, provide a concise summary of the main topics discussed. Keep the summary to 3-5 sentences.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"={{ 'Recent messages:\\n' + $json.chatHistory }}\"\n    }\n  ],\n  \"stream\": false\n}",
+        "jsonBody": "={{ {\n  model: 'ministral-3:3b-instruct-2512-q4_K_M',\n  messages: [\n    {\n      role: 'system',\n      content: 'You are a conversation summarizer. Summarize the chat in 3–5 sentences.'\n    },\n    {\n      role: 'user',\n      content: 'Recent messages:\\n' + $json.chatHistory\n    }\n  ],\n  stream: false\n} }}",
         "options": {
           "timeout": 120000
         }
@@ -92,8 +88,7 @@
       "parameters": {
         "operation": "sendMessage",
         "chatId": "={{ $('Telegram Trigger').first().json.message.chat.id }}",
-        "text": "={{ '--- Summary of Recent Messages ---\\n\\n' + $json.message.content }}",
-        "additionalFields": {}
+        "text": "={{ '--- Summary ---\\n\\n' + $json.message.content }}"
       },
       "credentials": {
         "telegramApi": {
