@@ -59,6 +59,7 @@ docker exec n8n-app sh -c "mkdir -p /tmp/credentials"
 # Generate UUIDs for credential IDs
 $tgId = (docker exec n8n-app node -e "console.log(require('crypto').randomUUID())" 2>&1).Trim()
 $pgId = (docker exec n8n-app node -e "console.log(require('crypto').randomUUID())" 2>&1).Trim()
+$ollamaId = (docker exec n8n-app node -e "console.log(require('crypto').randomUUID())" 2>&1).Trim()
 
 # Write credential JSONs with IDs
 $tgJson = @{
@@ -87,6 +88,16 @@ $pgJson = @{
     }
 }
 $pgJson | ConvertTo-Json | docker exec -i n8n-app sh -c "cat > /tmp/credentials/postgres-database.json"
+
+$ollamaJson = @{
+    id = $ollamaId
+    name = "Ollama API"
+    type = "ollamaApi"
+    data = @{
+        baseUrl = "http://ollama:11434"
+    }
+}
+$ollamaJson | ConvertTo-Json | docker exec -i n8n-app sh -c "cat > /tmp/credentials/ollama-api.json"
 
 # Import them
 docker exec n8n-app n8n import:credentials --separate --input=/tmp/credentials --userId $userId

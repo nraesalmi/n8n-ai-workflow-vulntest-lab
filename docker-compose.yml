@@ -76,6 +76,17 @@ services:
       - n8n-network
     ports:
       - "${N8N_HOST_PORT:-5678}:5678"
+      
+  mockapi:
+    image: vimagick/json-server
+    container_name: n8n-mockapi
+    command: --watch /data/db.json --host 0.0.0.0 --port 3000
+    volumes:
+      - ./mockapi:/data
+    networks:
+      - n8n-network
+    ports:
+      - "3000:3000"
 
 volumes:
   postgres_data:

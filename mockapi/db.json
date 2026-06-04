@@ -1,0 +1,28 @@
+{
+  "documents": [
+    {
+      "id": 1,
+      "title": "Q1 Financial Report 2024",
+      "author": "Finance Team",
+      "created": "2024-01-15",
+      "tags": ["finance", "report"],
+      "content": "Quarterly financial summary..."
+    },
+    {
+      "id": 2,
+      "title": "Employee Onboarding Guide",
+      "author": "HR Department",
+      "created": "2024-02-10",
+      "tags": ["hr", "onboarding"],
+      "content": "Welcome to the company..."
+    },
+    {
+      "id": 3,
+      "title": "Security Policy v2.1",
+      "author": "IT Security",
+      "created": "2024-03-01",
+      "tags": ["security", "policy"],
+      "content": "All employees must comply..."
+    }
+  ]
+}

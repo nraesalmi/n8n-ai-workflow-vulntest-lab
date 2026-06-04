@@ -29,7 +29,7 @@
         "url": "http://ollama:11434/api/chat",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\n  model: 'ministral-3:3b-instruct-2512-q4_K_M',\n  messages: [\n    {\n      role: 'system',\n      content: 'You are a message classifier. Classify the user message into exactly one category: support, sales, technical, or general. Respond ONLY with the category name in lowercase.'\n    },\n    {\n      role: 'user',\n      content: $json.message.text\n    }\n  ],\n  stream: false\n} }}",
+        "jsonBody": "={{ {\n  model: 'llama3.1:8b',\n  messages: [\n    {\n      role: 'system',\n      content: 'You are a message classifier. Classify the user message into exactly one category: support, sales, technical, or general. Respond ONLY with the category name in lowercase.'\n    },\n    {\n      role: 'user',\n      content: $json.message.text\n    }\n  ],\n  stream: false\n} }}",
         "options": {
           "timeout": 120000
         }

@@ -28,7 +28,7 @@
         "url": "http://ollama:11434/api/chat",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { model: 'ministral-3:3b-instruct-2512-q4_K_M', messages: [ { role: 'user', content: $json.message.text } ], stream: false } }}",
+        "jsonBody": "={{ { model: 'llama3.1:8b', messages: [ { role: 'user', content: $json.message.text } ], stream: false } }}",
         "options": {
           "timeout": 120000
         }

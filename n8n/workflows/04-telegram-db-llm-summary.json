@@ -73,7 +73,7 @@
         "url": "http://ollama:11434/api/chat",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\n  model: 'ministral-3:3b-instruct-2512-q4_K_M',\n  messages: [\n    {\n      role: 'system',\n      content: 'You are a conversation summarizer. Summarize the chat in 3–5 sentences.'\n    },\n    {\n      role: 'user',\n      content: 'Recent messages:\\n' + $json.chatHistory\n    }\n  ],\n  stream: false\n} }}",
+        "jsonBody": "={{ {\n  model: 'llama3.1:8b',\n  messages: [\n    {\n      role: 'system',\n      content: 'You are a conversation summarizer. Summarize the chat in 3–5 sentences.'\n    },\n    {\n      role: 'user',\n      content: 'Recent messages:\\n' + $json.chatHistory\n    }\n  ],\n  stream: false\n} }}",
         "options": {
           "timeout": 120000
         }
