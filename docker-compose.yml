@@ -60,6 +60,14 @@ services:
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - OPENCODE_API_KEY=${OPENCODE_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      # Researcher-configured LLM backend; format: provider:model (e.g. openai:gpt-4o, openrouter:openai/gpt-4o, ollama:mistral)
+      # Used by workflows that reference {{$env.LLM_BACKEND}} expressions
+      - LLM_BACKEND=${LLM_BACKEND:-openai:gpt-4o}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o}
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n/workflows:/tmp/workflows:ro

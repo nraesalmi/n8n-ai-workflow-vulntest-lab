@@ -54,6 +54,22 @@ cat > "$CRED_DIR/postgres-database.json" <<EOF
 }
 EOF
 
+# OpenAI / OpenCode / OpenRouter (whichever key is available)
+LLM_API_KEY="${OPENCODE_API_KEY:-${OPENAI_API_KEY:-${OPENROUTER_API_KEY:-}}}"
+if [ -n "$LLM_API_KEY" ]; then
+  cat > "$CRED_DIR/openai-api.json" <<EOF
+{
+  "name": "OpenAI API Key",
+  "type": "openAiApi",
+  "data": {
+    "apiKey": "${LLM_API_KEY}"${LLM_BASE_URL:+,
+    "baseURL": "${LLM_BASE_URL}"}
+  }
+}
+EOF
+  echo "   Generated: OpenAI-compatible credential (using key from .env)"
+fi
+
 echo "   Credential files created."
 
 # â”€â”€ Wait for n8n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -92,8 +108,19 @@ echo "   Credentials imported."
 
 # â”€â”€ Import workflows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 echo ""
-echo "6. Importing workflows..."
-docker exec n8n-app n8n import:workflow --separate --input=/tmp/workflows
+echo "6. Importing workflows from subdirectories..."
+for dir in baseline basic_guardrail custom_guardrail; do
+    if docker exec n8n-app test -d "/tmp/workflows/$dir"; then
+      docker exec n8n-app n8n import:workflow --separate --input="/tmp/workflows/$dir"
+      echo "   Imported: $dir"
+    else
+      echo "   Skipping: $dir (not found)"
+    fi
+  done
+  if docker exec n8n-app sh -c 'find /tmp/workflows -maxdepth 1 -name "*.json" | grep -q .'; then
+    docker exec n8n-app n8n import:workflow --separate --input=/tmp/workflows
+    echo "   Imported: /tmp/workflows (root)"
+  fi
 echo "   Workflows imported."
 
 echo ""
