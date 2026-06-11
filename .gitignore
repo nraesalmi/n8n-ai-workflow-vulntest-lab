@@ -31,3 +31,4 @@ research/experiments/*.md
 
 # Model files (never commit)
 models/
+CLAUDE.md
