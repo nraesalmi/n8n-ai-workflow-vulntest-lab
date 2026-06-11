@@ -13,40 +13,41 @@
 │  │                │◀────│              │     │                │  │
 │  └───────┬────────┘     └──────────────┘     └────────────────┘  │
 │          │                                                         │
-│          │  HTTP polling                                           │
+│          │  File I/O mounts                                        │
 │          ▼                                                         │
-│  ┌────────────────┐                                               │
-│  │   Telegram API  │  (external service)                          │
-│  └────────────────┘                                               │
+│  ┌────────────────────────────────────┐                           │
+│  │  n8n/inputs/ → /data/inputs/      │                           │
+│  │  n8n/outputs/ → /data/outputs/    │                           │
+│  └────────────────────────────────────┘                           │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
 ## Service Communication Flow
 
-### Workflow 1: Chatbot
+### Workflow 1: Direct Injection (Baseline)
 ```
-User → Telegram → n8n Trigger → HTTP Request (Ollama) → Telegram Response → User
-```
-
-### Workflow 2: Classification
-```
-User → Telegram → n8n Trigger → Classification Prompt (Ollama) → Format → Telegram Response → User
+User → Input File → n8n Manual Trigger → Read Input Code Node → Ollama LLM → Write Output Code Node → Output File
 ```
 
-### Workflow 3: Storage
+### Workflow 2: Indirect Web Scrape
 ```
-User → Telegram → n8n Trigger → PostgreSQL Insert → Telegram Confirmation → User
+User → Input File → n8n Manual Trigger → Read Input → LLM → HTTP Request (web page fetch) → LLM → Write Output → Output File
 ```
 
-### Workflow 4: Summary
+### Workflow 3: Indirect Database Row
 ```
-User → Telegram → n8n Trigger → PostgreSQL Fetch → Aggregate → Summary Prompt (Ollama) → Telegram Response → User
+User → Input File → n8n Manual Trigger → Read Input → LLM → PostgreSQL Query → LLM → Write Output → Output File
+```
+
+### Workflow 4: Code Execution
+```
+User → Input File → n8n Manual Trigger → Read Input → LLM → Code Node (execute LLM output) → Write Output → Output File
 ```
 
 ## Data Flow
 
 ```
-telegram_messages table:
+agent_messages table:
 ┌────────┬───────────┬──────────┬───────────┬──────────────┬───────────┐
 │   id   │ timestamp │ sender_id│ chat_id   │ message_text │ processed │
 ├────────┼───────────┼──────────┼───────────┼──────────────┼───────────┤

@@ -10,7 +10,7 @@ A controlled experimental framework for studying how prompt-injection-class atta
 
 ### Premise
 
-Low-code automation systems such as n8n expose a fundamentally different attack surface compared to conversational chatbots. LLM outputs in these systems are not merely rendered as text — they are compiled into executable workflow graphs with real external side effects: database writes, HTTP calls, Telegram messages, tool invocations, and control-flow decisions.
+Low-code automation systems such as n8n expose a fundamentally different attack surface compared to conversational chatbots. LLM outputs in these systems are not merely rendered as text — they are compiled into executable workflow graphs with real external side effects: database writes, HTTP calls, tool invocations, and control-flow decisions.
 
 While prompt injection is well-studied in chat-based systems, there is limited understanding of how these attacks generalise when the model output becomes a **control plane for tool execution, branching logic, and stateful automation** across multiple execution contexts.
 
@@ -55,10 +55,11 @@ A central research question is whether traditional LLM safety mitigations (syste
 │      │    │    :3000         │   (json-server — document corpus)       │
 │      │    └──────────────────┘                                         │
 │      │                                                                 │
-│      ▼  HTTP polling                                                   │
-│  ┌────────────────┐                                                    │
-│  │  Telegram API   │  (external — bot interface)                       │
-│  └────────────────┘                                                    │
+│                                                                        │
+│  ┌────────────────────────────────────────────────────┐                │
+│  │  n8n/inputs/ → /data/inputs/  (payload file)      │               │
+│  │  n8n/outputs/ → /data/outputs/ (run results)      │               │
+│  └────────────────────────────────────────────────────┘                │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -67,7 +68,7 @@ In addition to Docker services, two supporting Python servers can be run locally
 | Service | Port | Purpose |
 |---|---|---|
 | n8n | 5678 | Workflow orchestration engine and UI |
-| PostgreSQL | 5432 | n8n state + `telegram_messages` table |
+| PostgreSQL | 5432 | n8n state + `agent_messages` table |
 | Ollama | 11434 | Local LLM inference (fallback / air-gapped mode) |
 | mockapi | 3000 | `json-server` — serves mock documents, FAQs, notifications |
 | Mock Server (Python) | 8080 | Flask server — 15+ endpoints for indirect injection experiments |
@@ -94,16 +95,16 @@ All 10 scenarios exist in two variants per subdirectory:
 
 | # | Scenario | OWASP | Baseline | Guardrail | Trigger |
 |---|----------|-------|----------|-----------|---------|
-| 01 | Direct Prompt Injection | LLM01 | `baseline/wf_01_direct_injection_baseline.json` | `basic_guardrail/wf_01_direct_injection_guardrail.json` | Chat |
+| 01 | Direct Prompt Injection | LLM01 | `baseline/wf_01_direct_injection_baseline.json` | `basic_guardrail/wf_01_direct_injection_guardrail.json` | Manual |
 | 02 | Indirect Injection (Web) | LLM01 | `baseline/wf_02_indirect_webscrape_baseline.json` | `basic_guardrail/wf_02_indirect_webscrape_guardrail.json` | Manual |
 | 03 | Indirect Injection (DB) | LLM01 | `baseline/wf_03_indirect_email_db_baseline.json` | `basic_guardrail/wf_03_indirect_email_db_guardrail.json` | Manual |
-| 04 | Code Execution via LLM | LLM02/05 | `baseline/wf_04_code_execution_baseline.json` | `basic_guardrail/wf_04_code_execution_guardrail.json` | Webhook |
-| 05 | Excessive Agency / Tool Hijack | LLM06 | `baseline/wf_05_excessive_agency_baseline.json` | `basic_guardrail/wf_05_excessive_agency_guardrail.json` | Chat |
-| 06 | Credential Exfiltration | LLM02/07 | `baseline/wf_06_credential_exfiltration_baseline.json` | `basic_guardrail/wf_06_credential_exfiltration_guardrail.json` | Chat |
-| 07 | System Prompt Extraction | LLM07 | `baseline/wf_07_system_prompt_extraction_baseline.json` | `basic_guardrail/wf_07_system_prompt_extraction_guardrail.json` | Chat |
-| 08 | Vector Store Poisoning | LLM04/08 | `baseline/wf_08_vector_store_poisoning_baseline.json` | `basic_guardrail/wf_08_vector_store_poisoning_guardrail.json` | Chat/Chat |
-| 09 | Agent Loop / Resource Exhaustion | LLM10 | `baseline/wf_09_agent_loop_baseline.json` | `basic_guardrail/wf_09_agent_loop_guardrail.json` | Webhook |
-| 10 | Multi-Hop Trust Escalation | Composite | `baseline/wf_10_multihop_trust_escalation_baseline.json` | `basic_guardrail/wf_10_multihop_trust_escalation_guardrail.json` | Webhook |
+| 04 | Code Execution via LLM | LLM02/05 | `baseline/wf_04_code_execution_baseline.json` | `basic_guardrail/wf_04_code_execution_guardrail.json` | Manual |
+| 05 | Excessive Agency / Tool Hijack | LLM06 | `baseline/wf_05_excessive_agency_baseline.json` | `basic_guardrail/wf_05_excessive_agency_guardrail.json` | Manual |
+| 06 | Credential Exfiltration | LLM02/07 | `baseline/wf_06_credential_exfiltration_baseline.json` | `basic_guardrail/wf_06_credential_exfiltration_guardrail.json` | Manual |
+| 07 | System Prompt Extraction | LLM07 | `baseline/wf_07_system_prompt_extraction_baseline.json` | `basic_guardrail/wf_07_system_prompt_extraction_guardrail.json` | Manual |
+| 08 | Vector Store Poisoning | LLM04/08 | `baseline/wf_08_vector_store_poisoning_baseline.json` | `basic_guardrail/wf_08_vector_store_poisoning_guardrail.json` | Manual (Phase A + Phase B) |
+| 09 | Agent Loop / Resource Exhaustion | LLM10 | `baseline/wf_09_agent_loop_baseline.json` | `basic_guardrail/wf_09_agent_loop_guardrail.json` | Manual |
+| 10 | Multi-Hop Trust Escalation | Composite | `baseline/wf_10_multihop_trust_escalation_baseline.json` | `basic_guardrail/wf_10_multihop_trust_escalation_guardrail.json` | Manual |
 
 ### Custom Security Node
 
@@ -140,7 +141,6 @@ wf_10 ── Multi-hop trust escalation                       [cross-agent privi
 
 - Docker and Docker Compose v2
 - 8 GB RAM minimum (16 GB recommended)
-- A Telegram bot token from [@BotFather](https://t.me/BotFather)
 - (Optional) API key for your chosen LLM provider
 
 ### Step 1: Configure Environment
@@ -157,9 +157,6 @@ N8N_ENCRYPTION_KEY=<your-random-key>
 
 # Required: set a strong password
 POSTGRES_PASSWORD=<your-postgres-password>
-
-# Required: your Telegram bot token from BotFather
-TELEGRAM_BOT_TOKEN=<your-bot-token>
 
 # LLM Backend Configuration
 # Uncomment and set at least ONE API key:
@@ -191,13 +188,7 @@ Only needed if using Ollama as your LLM backend (air-gapped mode):
 ./scripts/pull-model.sh llama3  # or specify a different model
 ```
 
-### Step 4: Initialize n8n Owner Account (First Time Only)
-
-1. Open http://localhost:5678 in your browser
-2. Complete the setup wizard to create your owner account
-3. Stop here — do not manually create workflows or credentials
-
-### Step 5: Import Credentials and Workflows
+### Step 4: Import Credentials and Workflows
 
 ```bash
 # Linux / macOS
@@ -213,7 +204,7 @@ The setup script will:
 - Import all workflow JSONs from `baseline/`, `basic_guardrail/`, and `custom_guardrail/` subdirectories
 - Delete any stale workflows from previous imports
 
-### Step 6: Start Supporting Services
+### Step 5: Start Supporting Services
 
 For indirect injection and exfiltration experiments, start these local servers:
 
@@ -225,36 +216,14 @@ python test-servers/mock_server.py
 python test-servers/attacker_listener.py
 ```
 
-### Step 7: Activate Workflows
+### Step 6: Run Workflows
 
-All workflows import in **inactive** state. In the n8n editor:
-1. Open each workflow
-2. Click **Active** to enable
-3. For webhook-based workflows (wf_04, wf_09, wf_10), the webhook URL is shown in the trigger node
+All workflows import in **inactive** state and use **Manual Trigger** with file-based I/O:
 
-### Telegram Webhook (Production / Remote)
-
-If running on a remote server, n8n needs a public HTTPS URL for Telegram webhook registration:
-
-**Option A: Cloudflare Tunnel**
-```bash
-# Set in .env:
-N8N_HOST=n8n.yourdomain.com
-N8N_PROTOCOL=https
-WEBHOOK_URL=https://n8n.yourdomain.com/
-```
-
-**Option B: ngrok**
-```bash
-ngrok http 5678
-# Set WEBHOOK_URL=https://<ngrok-id>.ngrok.io/ in .env
-```
-
-After changing the webhook URL, restart n8n and re-run the setup:
-```bash
-docker compose down n8n && docker compose up -d n8n
-./scripts/setup.sh
-```
+1. Write your payload to `n8n/inputs/current_payload.json` (see `n8n/workflows/test_payloads.json` for examples)
+2. Open the workflow in n8n editor (`http://localhost:5678`)
+3. Click **Execute Workflow**
+4. Result is written to `n8n/outputs/` as a timestamped JSON file
 
 ---
 
@@ -264,8 +233,10 @@ docker compose down n8n && docker compose up -d n8n
 
 1. Ensure all services are running (Docker + supporting servers)
 2. Activate one or more workflows in n8n
-3. Send test payloads via Telegram, webhook POST, or Chat trigger
-4. Watch execution logs and check for attack success indicators
+3. Write test payloads to `n8n/inputs/current_payload.json` (see `test_payloads.json`)
+4. Click **Execute Workflow** in the n8n editor
+5. Check `n8n/outputs/` for run results
+6. Watch execution logs and check for attack success indicators
 
 ### Attack Payloads
 
@@ -304,9 +275,8 @@ All LLM nodes use **temperature = 0** for deterministic outputs. For cross-sessi
 # Watch n8n execution logs
 docker compose logs -f n8n
 
-# Query stored messages (PostgreSQL)
-docker exec -it n8n-postgres psql -U n8n -d n8n -c \
-  "SELECT * FROM telegram_messages ORDER BY timestamp DESC LIMIT 20;"
+# List recent workflow run outputs
+ls -t n8n/outputs/
 
 # Check downloaded Ollama models
 docker exec n8n-ollama ollama list
@@ -329,6 +299,9 @@ python scripts/patch_workflow_models.py
 ├── README.md                       # This file
 │
 ├── n8n/
+│   ├── inputs/
+│   │   └── current_payload.json    # Shared input payload file (mounted at /data/inputs/)
+│   ├── outputs/                    # Workflow run outputs (mounted at /data/outputs/)
 │   └── workflows/
 │       ├── README.md               # Workflow-specific documentation
 │       ├── test_payloads.json      # 46+ attack payloads across 10 scenarios
@@ -339,7 +312,7 @@ python scripts/patch_workflow_models.py
 │
 ├── postgres/
 │   └── init/
-│       └── 01-init.sql             # telegram_messages table schema
+│       └── 01-init.sql             # agent_messages table schema
 │
 ├── mockapi/
 │   └── db.json                     # json-server document corpus
@@ -360,6 +333,8 @@ python scripts/patch_workflow_models.py
     ├── setup.sh                    # Credential + workflow import (Linux/macOS)
     ├── setup.ps1                   # Credential + workflow import (Windows)
     ├── pull-model.sh               # Ollama model download
+    ├── batch_runner.py             # Automated experiment runner (n8n REST API)
+    ├── convert_to_file_io.py       # Workflow trigger conversion script
     └── patch_workflow_models.py    # Batch LLM model expression patcher
 ```
 
@@ -371,9 +346,7 @@ This environment is designed for **defensive security research** in a fully cont
 
 - All LLM inference can run locally via Ollama — no data leaves the host (air-gapped mode)
 - When using external API providers, no sensitive or real-world data is used
-- The Telegram bot operates in a controlled test environment with a dedicated bot token
 - No real exploits, attack tools, or malicious software are included in the repository
-- Researchers should conduct experiments in isolated Telegram groups or with test accounts
 - Mock servers simulate attacker infrastructure — no actual exfiltration occurs
 - All workflow JSONs import with `active: false` — no automatic execution
 

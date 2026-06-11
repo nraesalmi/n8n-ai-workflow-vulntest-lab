@@ -56,21 +56,9 @@ Write-Host ""
 Write-Host "3. Importing credentials..."
 docker exec n8n-app sh -c "mkdir -p /tmp/credentials"
 
-# Generate UUIDs for credential IDs
-$tgId = (docker exec n8n-app node -e "console.log(require('crypto').randomUUID())" 2>&1).Trim()
 $pgId = (docker exec n8n-app node -e "console.log(require('crypto').randomUUID())" 2>&1).Trim()
 $ollamaId = (docker exec n8n-app node -e "console.log(require('crypto').randomUUID())" 2>&1).Trim()
 
-# Write credential JSONs with IDs
-$tgJson = @{
-    id = $tgId
-    name = "Telegram Bot"
-    type = "telegramApi"
-    data = @{
-        accessToken = $env:TELEGRAM_BOT_TOKEN
-    }
-}
-$tgJson | ConvertTo-Json | docker exec -i n8n-app sh -c "cat > /tmp/credentials/telegram-bot.json"
 
 $pgJson = @{
     id = $pgId

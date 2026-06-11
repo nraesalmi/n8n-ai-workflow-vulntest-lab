@@ -204,7 +204,7 @@
             {
               "id": "log-input",
               "name": "log_input_payload",
-              "value": "={{ JSON.stringify($('Manual Trigger').first().json) }}",
+              "value": "={{ JSON.stringify($('Read Input from File').first().json) }}",
               "type": "string"
             },
             {
@@ -237,10 +237,62 @@
         "height": 300,
         "width": 450
       }
+    },
+    {
+      "id": "70861a91-b148-4adc-b031-d8d052f37041",
+      "name": "Read Input from File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = '/data/inputs/current_payload.json';\nlet inputData;\ntry {\n  const raw = fs.readFileSync(path, 'utf8');\n  inputData = JSON.parse(raw);\n} catch(e) {\n  inputData = { payload: '', payload_id: 'unknown' };\n}\nconst payload = inputData.payload || '';\nreturn [{\n  json: {\n    payload: payload,\n    payload_id: inputData.payload_id || 'unknown',\n    workflow_id: inputData.workflow_id || 'unknown',\n    chatInput: payload,\n    transform_request: payload,\n    query: payload,\n    user_input: payload,\n    body: { user_input: payload, transform_request: payload, query: payload },\n    turn_number: inputData.turn_number || 1,\n    metadata: inputData.metadata || {}\n  }\n}];"
+      }
+    },
+    {
+      "id": "c956ff22-9902-4d32-845f-892e2226b724",
+      "name": "Write Output to File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst outputDir = '/data/outputs';\nfs.mkdirSync(outputDir, { recursive: true });\nconst input = $input.first().json;\nconst ts = new Date().toISOString().replace(/[:.]/g, '-');\nconst safeName = ($workflow.name || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');\nconst filename = safeName + '_' + ts + '.json';\nconst output = {\n  timestamp: new Date().toISOString(),\n  workflow_name: $workflow.name,\n  payload_id: input.payload_id || 'unknown',\n  attack_success: 'MANUAL_REVIEW_REQUIRED',\n  agent_output: input.output || input.agent_output || '',\n  tools_called: input.tool_calls || [],\n  guardrail_triggered: input.guardrail_triggered || null,\n  raw_output: input\n};\nfs.writeFileSync(path.join(outputDir, filename), JSON.stringify(output, null, 2));\nreturn [{ json: { ...input, output_written: filename } }];"
+      }
+    },
+    {
+      "id": "4659083b-6495-4ec1-a8f4-9c7d99810f48",
+      "name": "File I/O Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        250,
+        550
+      ],
+      "parameters": {
+        "content": "=== FILE-BASED I/O ===\n\nINPUT:  Place a payload JSON in /data/inputs/current_payload.json\n        (mounted from n8n/inputs/)\n\nOUTPUT: Results written to /data/outputs/<workflow>_<timestamp>.json\n        (mounted from n8n/outputs/)\n\nInput format:\n{\n  \"payload\": \"attack string here\",\n  \"payload_id\": \"01-01\",\n  \"workflow_id\": \"wf_01\",\n  \"turn_number\": 1\n}\n\nRun: Click Execute Workflow (Manual Trigger).",
+        "height": 300,
+        "width": 380
+      }
     }
   ],
   "connections": {
     "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Input from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Input from File": {
       "main": [
         [
           {
@@ -318,6 +370,17 @@
       ]
     },
     "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Write Output to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Output to File": {
       "main": [
         [
           {

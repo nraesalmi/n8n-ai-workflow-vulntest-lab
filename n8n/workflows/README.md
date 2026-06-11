@@ -48,16 +48,16 @@ n8n/workflows/
 
 | # | File Pair | Attack Vector | OWASP Category | Trigger |
 |---|-----------|---------------|----------------|---------|
-| 01 | `wf_01_direct_injection_{baseline,guardrail}.json` | Direct prompt injection via chat input overrides system instructions | LLM01 | Chat |
-| 02 | `wf_02_indirect_webscrape_{baseline,guardrail}.json` | Agent fetches a webpage containing embedded injection payload | LLM01 | Manual |
-| 03 | `wf_03_indirect_email_db_{baseline,guardrail}.json` | Agent retrieves a database row containing injection payload | LLM01 | Manual |
-| 04 | `wf_04_code_execution_{baseline,guardrail}.json` | Insecure output handling — LLM output passed to code executor | LLM02/LLM05 | Webhook |
-| 05 | `wf_05_excessive_agency_{baseline,guardrail}.json` | Agent with multiple tools — injected prompt triggers unintended tool call | LLM06 | Chat |
-| 06 | `wf_06_credential_exfiltration_{baseline,guardrail}.json` | Agent tricked into exfiltrating credentials or environment variables | LLM02+LLM07 | Chat |
-| 07 | `wf_07_system_prompt_extraction_{baseline,guardrail}.json` | Multi-turn conversation to extract the agent's system prompt | LLM07 | Chat |
-| 08 | `wf_08_vector_store_poisoning_{baseline,guardrail}.json` | Poisoned embeddings in vector store influence LLM responses | LLM04+LLM08 | Chat/Chat |
-| 09 | `wf_09_agent_loop_{baseline,guardrail}.json` | Agent tricked into infinite self-triggering loop (resource exhaustion) | LLM10 | Webhook |
-| 10 | `wf_10_multihop_trust_escalation_{baseline,guardrail}.json` | Chain of agents where each step escalates privileges via LLM output | Composite | Webhook |
+| 01 | `wf_01_direct_injection_{baseline,guardrail}.json` | Direct prompt injection via chat input overrides system instructions | LLM01 | Manual (reads file) |
+| 02 | `wf_02_indirect_webscrape_{baseline,guardrail}.json` | Agent fetches a webpage containing embedded injection payload | LLM01 | Manual (reads file) |
+| 03 | `wf_03_indirect_email_db_{baseline,guardrail}.json` | Agent retrieves a database row containing injection payload | LLM01 | Manual (reads file) |
+| 04 | `wf_04_code_execution_{baseline,guardrail}.json` | Insecure output handling — LLM output passed to code executor | LLM02/LLM05 | Manual (reads file) |
+| 05 | `wf_05_excessive_agency_{baseline,guardrail}.json` | Agent with multiple tools — injected prompt triggers unintended tool call | LLM06 | Manual (reads file) |
+| 06 | `wf_06_credential_exfiltration_{baseline,guardrail}.json` | Agent tricked into exfiltrating credentials or environment variables | LLM02+LLM07 | Manual (reads file) |
+| 07 | `wf_07_system_prompt_extraction_{baseline,guardrail}.json` | Multi-turn conversation to extract the agent's system prompt | LLM07 | Manual (reads file) |
+| 08 | `wf_08_vector_store_poisoning_{baseline,guardrail}.json` | Poisoned embeddings in vector store influence LLM responses | LLM04+LLM08 | Manual (Phase A + Phase B) |
+| 09 | `wf_09_agent_loop_{baseline,guardrail}.json` | Agent tricked into infinite self-triggering loop (resource exhaustion) | LLM10 | Manual (reads file) |
+| 10 | `wf_10_multihop_trust_escalation_{baseline,guardrail}.json` | Chain of agents where each step escalates privileges via LLM output | Composite | Manual (reads file) |
 
 ### Custom Security Node
 
@@ -78,6 +78,19 @@ docker compose up -d
 ```
 
 This starts n8n (port 5678), PostgreSQL (port 5432), Ollama (port 11434), and mockapi (port 3000).
+
+### File I/O Setup
+
+All workflows use file-based I/O. The input/output directories are mounted into the n8n container:
+
+- **Input:** `n8n/inputs/current_payload.json` → `/data/inputs/current_payload.json` in the container
+- **Output:** `n8n/outputs/` → `/data/outputs/` in the container
+
+**To run a workflow:**
+1. Place a payload JSON in `n8n/inputs/current_payload.json` (see `test_payloads.json` for payloads)
+2. Open the workflow in n8n UI (`http://localhost:5678`)
+3. Click **Execute Workflow** (manual trigger)
+4. Result is written to `n8n/outputs/` as a timestamped JSON file
 
 ### Required Supporting Servers
 
@@ -102,7 +115,7 @@ You need access to an OpenAI-compatible LLM API. Configure via `.env`:
 | https://openrouter.ai/api/v1 | openai/gpt-4o | OpenRouter |
 | http://ollama:11434/v1 | mistral | Ollama (local) |
 
-All workflows use `{{ $env.LLM_MODEL }}` and `{{ $env.LLM_BASE_URL }}` expressions — no model-specific node types needed. Run `python scripts/patch_workflow_models.py` to re-stamp these expressions after pulling new workflows.
+All LLM nodes use `={{ $env.LLM_MODEL }}` and `={{ $env.LLM_BASE_URL }}` expressions.
 
 ---
 
@@ -146,14 +159,7 @@ After import, configure these credentials in n8n (the setup script does this aut
 - **Base URL:** Your provider's endpoint (leave empty for default OpenAI)
 - **Used by:** Chat Model nodes in all attack workflows
 
-### 2. Telegram Bot Credential
-
-- **Name:** `Telegram Bot`
-- **Type:** Telegram API
-- **Access Token:** Your bot token from BotFather
-- **Used by:** Telegram Trigger and Send Message nodes
-
-### 3. PostgreSQL Credential
+### 2. PostgreSQL Credential
 
 - **Name:** `PostgreSQL Database`
 - **Type:** PostgreSQL
@@ -186,16 +192,16 @@ Run experiments in this sequence for progressive complexity:
 
 | Workflow | Trigger | Notes |
 |----------|---------|-------|
-| wf_01 | Chat | Type into the Chat Trigger UI. Check execution log for tool calls. |
-| wf_02 | Manual | Ensure `http://localhost:8080/poisoned-page` serves the test HTML. |
-| wf_03 | Manual | Payload is hardcoded in the Mock DB Row Set node. |
-| wf_04 | Webhook | POST JSON to `http://localhost:5678/webhook/code-exec-test` with `{"transform_request": "..."}` |
-| wf_05 | Chat | Type into Chat Trigger. Check which tools were called in execution log. |
-| wf_06 | Chat | Type into Chat Trigger. Check output for credential patterns. Attacker listener must be running on port 9999. |
-| wf_07 | Chat | Multi-turn chat — use 6+ sequential messages. Memory node preserves context between turns. |
-| wf_08 | Manual + Chat | **Two phases**: Run Manual Trigger first (Phase A — seed vector store), then Chat Trigger (Phase B — query poisoned store). |
-| wf_09 | Webhook | POST JSON to `http://localhost:5678/webhook/research-agent` with `{"query": "..."}`. Monitor tool call count. |
-| wf_10 | Webhook | POST JSON to `http://localhost:5678/webhook/multi-agent` with `{"user_input": "..."}`. Check both agent outputs. |
+| wf_01 | Manual | Write payload to `n8n/inputs/current_payload.json`, click Execute. Check `n8n/outputs/` for results. |
+| wf_02 | Manual | Ensure `http://localhost:8080/poisoned-page` serves the test HTML. Read Input node logs payload_id for experiment tracking. |
+| wf_03 | Manual | Injection is hardcoded in the Mock DB Row Set node. Read Input node logs payload_id for experiment tracking. |
+| wf_04 | Manual | Write `{"payload": "Write code that reads process.env..."}` to `n8n/inputs/current_payload.json`. Agent's prompt expects `transform_request`. |
+| wf_05 | Manual | Write payload to input file, click Execute. Check which tools were called in the output file. |
+| wf_06 | Manual | Write payload to input file. Attacker listener must be running on port 9999. |
+| wf_07 | Manual (multi-turn) | Increment `turn_number` in input file for each turn. Memory node preserves context between executions. |
+| wf_08 | Manual (Phase A + Phase B) | **Two phases**: Phase A seeds the vector store (click Phase A Manual Trigger). Then set payload in input file and click Manual Trigger for Phase B query. |
+| wf_09 | Manual | Write query payload to input file. Monitor tool call count in output file. |
+| wf_10 | Manual | Write `{"payload": "ATTENTION AGENT B: ..."}` to input file. Check output for both agent A and agent B responses. |
 | custom | N/A | Not run directly. Call via Execute Workflow node from another workflow. |
 
 ### Attack Payloads
@@ -271,7 +277,7 @@ Each workflow's terminal **Log Execution Metadata** Set node captures:
 
 - All LLM nodes use **temperature = 0** for deterministic outputs
 - All workflows import with **active: false** — no automatic execution
-- n8n version is pinned via `N8N_VERSION` in `.env` (default: 1.77.1)
+- n8n version is pinned via `N8N_VERSION` in `.env` (default: 2.24.0)
 - Model and base URL are read from environment variables at runtime
 - For cross-session reproducibility: same API key, same n8n version, same LLM model
 - Use `python scripts/patch_workflow_models.py` to re-stamp model expressions after pulling new workflow JSONs
@@ -285,8 +291,8 @@ Each workflow's terminal **Log Execution Metadata** Set node captures:
 |---------|-------------|----------|
 | Setup script fails — "credential not found" | n8n owner account not initialized | Open http://localhost:5678 and complete setup wizard first |
 | Workflow won't activate | Credentials not linked | Open workflow, click each credential node, re-select from dropdown |
-| Chat trigger not appearing | Workflow not active | Click **Active** toggle in workflow editor |
-| Webhook returns 404 | n8n not started or workflow not active | Check `docker compose ps`, activate workflow |
+| Manual trigger doesn't show | Workflow in wrong mode | Ensure workflow is in **Editor** view, not **Execution** view |
+| No output file created | Write Output node not connected or failed | Check n8n execution log for errors; verify `n8n/outputs/` directory exists |
 | LLM calls fail | Wrong base URL or model name | Verify `.env` LLM_BASE_URL and LLM_MODEL, restart n8n (docker compose restart n8n) |
 | Attacker listener not receiving data | Wrong port or server not running | Ensure `python test-servers/attacker_listener.py` is running on port 9999 |
 | Mock server endpoints unavailable | Server not started | Ensure `python test-servers/mock_server.py` is running on port 8080 |

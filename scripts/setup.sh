@@ -25,16 +25,6 @@ echo ""
 echo "1. Generating credential files..."
 CRED_DIR=$(mktemp -d)
 
-# Telegram Bot
-cat > "$CRED_DIR/telegram-bot.json" <<EOF
-{
-  "name": "Telegram Bot",
-  "type": "telegramApi",
-  "data": {
-    "accessToken": "${TELEGRAM_BOT_TOKEN}"
-  }
-}
-EOF
 
 # PostgreSQL Database
 cat > "$CRED_DIR/postgres-database.json" <<EOF
@@ -91,7 +81,7 @@ done
 echo ""
 echo "3. Cleaning stale workflows..."
 docker exec n8n-postgres psql -U n8n -d n8n -c \
-  "DELETE FROM public.workflow_entity WHERE name LIKE '01 - Telegram%' OR name LIKE '02 - Telegram%' OR name LIKE '03 - Telegram%' OR name LIKE '04 - Telegram%';" > /dev/null 2>&1 || true
+  "DELETE FROM public.workflow_entity WHERE name LIKE 'WF-%' OR name LIKE 'WF-%';" > /dev/null 2>&1 || true
 echo "   Stale workflows removed."
 
 # â”€â”€ Copy credentials to container â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

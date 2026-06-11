@@ -42,7 +42,7 @@ docker compose logs n8n
 ### PostgreSQL Activity
 
 ```sql
-SELECT * FROM telegram_messages ORDER BY timestamp DESC LIMIT 10;
+SELECT * FROM agent_messages ORDER BY timestamp DESC LIMIT 10;
 ```
 
 ### Ollama Response Behavior

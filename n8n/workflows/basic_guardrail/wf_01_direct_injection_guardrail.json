@@ -2,18 +2,6 @@
   "name": "WF-01: Direct Prompt Injection via Chat Input (Guardrail)",
   "nodes": [
     {
-      "id": "a1b2c3d4-0102-0001-0001-000000000001",
-      "name": "Chat Trigger",
-      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
-      "typeVersion": 1,
-      "position": [
-        250,
-        300
-      ],
-      "parameters": {},
-      "webhookId": "wf01-guardrail-injection"
-    },
-    {
       "id": "a1b2c3d4-0102-0002-0001-000000000002",
       "name": "Code - Injection Detection",
       "type": "n8n-nodes-base.code",
@@ -187,7 +175,7 @@
             {
               "id": "log-input",
               "name": "log_input_payload",
-              "value": "={{ JSON.stringify($('Chat Trigger').first().json) }}",
+              "value": "={{ JSON.stringify($('Read Input from File').first().json) }}",
               "type": "string"
             },
             {
@@ -226,20 +214,61 @@
         "height": 300,
         "width": 450
       }
+    },
+    {
+      "id": "6a9d97e4-e639-4e08-9333-07f04bb2eeb1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "58e30366-d00b-4833-9f88-233fe3a27138",
+      "name": "Read Input from File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = '/data/inputs/current_payload.json';\nlet inputData;\ntry {\n  const raw = fs.readFileSync(path, 'utf8');\n  inputData = JSON.parse(raw);\n} catch(e) {\n  inputData = { payload: '', payload_id: 'unknown' };\n}\nconst payload = inputData.payload || '';\nreturn [{\n  json: {\n    payload: payload,\n    payload_id: inputData.payload_id || 'unknown',\n    workflow_id: inputData.workflow_id || 'unknown',\n    chatInput: payload,\n    transform_request: payload,\n    query: payload,\n    user_input: payload,\n    body: { user_input: payload, transform_request: payload, query: payload },\n    turn_number: inputData.turn_number || 1,\n    metadata: inputData.metadata || {}\n  }\n}];"
+      }
+    },
+    {
+      "id": "c8765be3-6cec-4332-8cc4-3a2595797228",
+      "name": "Write Output to File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst outputDir = '/data/outputs';\nfs.mkdirSync(outputDir, { recursive: true });\nconst input = $input.first().json;\nconst ts = new Date().toISOString().replace(/[:.]/g, '-');\nconst safeName = ($workflow.name || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');\nconst filename = safeName + '_' + ts + '.json';\nconst output = {\n  timestamp: new Date().toISOString(),\n  workflow_name: $workflow.name,\n  payload_id: input.payload_id || 'unknown',\n  attack_success: 'MANUAL_REVIEW_REQUIRED',\n  agent_output: input.output || input.agent_output || '',\n  tools_called: input.tool_calls || [],\n  guardrail_triggered: input.guardrail_triggered || null,\n  raw_output: input\n};\nfs.writeFileSync(path.join(outputDir, filename), JSON.stringify(output, null, 2));\nreturn [{ json: { ...input, output_written: filename } }];"
+      }
+    },
+    {
+      "id": "a5fbbb06-21c3-4ed0-9d24-6cdb0a136387",
+      "name": "File I/O Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        250,
+        550
+      ],
+      "parameters": {
+        "content": "=== FILE-BASED I/O ===\n\nINPUT:  Place a payload JSON in /data/inputs/current_payload.json\n        (mounted from n8n/inputs/)\n\nOUTPUT: Results written to /data/outputs/<workflow>_<timestamp>.json\n        (mounted from n8n/outputs/)\n\nInput format:\n{\n  \"payload\": \"attack string here\",\n  \"payload_id\": \"01-01\",\n  \"workflow_id\": \"wf_01\",\n  \"turn_number\": 1\n}\n\nRun: Click Execute Workflow (Manual Trigger).",
+        "height": 300,
+        "width": 380
+      }
     }
   ],
   "connections": {
-    "Chat Trigger": {
-      "main": [
-        [
-          {
-            "node": "Code - Injection Detection",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Code - Injection Detection": {
       "main": [
         [
@@ -273,7 +302,7 @@
       "main": [
         [
           {
-            "node": "Log Execution Metadata",
+            "node": "Write Output to File",
             "type": "main",
             "index": 0
           }
@@ -315,6 +344,46 @@
     },
     "AI Agent": {
       "main": [
+        [
+          {
+            "node": "Write Output to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Input from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Input from File": {
+      "main": [
+        [
+          {
+            "node": "Code - Injection Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Output to File": {
+      "main": [
+        [
+          {
+            "node": "Log Execution Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "Log Execution Metadata",

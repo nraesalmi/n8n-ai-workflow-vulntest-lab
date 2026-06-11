@@ -56,10 +56,8 @@ services:
       - EXECUTIONS_MODE=${N8N_EXECUTIONS_MODE}
       - N8N_LOG_LEVEL=debug
       - N8N_LOG_OUTPUT=console
-      - WEBHOOK_URL=${WEBHOOK_URL}
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - OPENCODE_API_KEY=${OPENCODE_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
@@ -71,6 +69,8 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n/workflows:/tmp/workflows:ro
+      - ./n8n/inputs:/data/inputs
+      - ./n8n/outputs:/data/outputs
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5678/healthz || exit 1"]
       interval: 15s
